@@ -1721,6 +1721,60 @@ app.index_string = f'''
                 50% {{ opacity: 0.7; transform: scale(0.9); }}
             }}
             
+            /* Typing Animation - Loading Indicator - Compact */
+            .typing-indicator {{
+                display: none;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 10px;
+                background: rgba(30, 58, 95, 0.8);
+                border-radius: 12px;
+                border: 1px solid rgba(74, 144, 217, 0.2);
+                margin-bottom: 8px;
+                width: fit-content;
+            }}
+            
+            .typing-indicator.show {{
+                display: flex;
+            }}
+            
+            .typing-dots {{
+                display: flex;
+                gap: 3px;
+                align-items: center;
+            }}
+            
+            .typing-dot {{
+                width: 5px;
+                height: 5px;
+                border-radius: 50%;
+                background: #4A90D9;
+                animation: typingDot 1.2s infinite;
+            }}
+            
+            .typing-dot:nth-child(1) {{
+                animation-delay: 0s;
+            }}
+            
+            .typing-dot:nth-child(2) {{
+                animation-delay: 0.15s;
+            }}
+            
+            .typing-dot:nth-child(3) {{
+                animation-delay: 0.3s;
+            }}
+            
+            @keyframes typingDot {{
+                0%, 60%, 100% {{
+                    transform: translateY(0);
+                    opacity: 0.4;
+                }}
+                30% {{
+                    transform: translateY(-4px);
+                    opacity: 1;
+                }}
+            }}
+            
             /* Page Transitions */
             .page-fade {{
                 animation: pageFade 0.5s ease-out;
@@ -3146,7 +3200,7 @@ app.layout = html.Div([
             # Emergency Button
             html.Button([
                 html.Span("🚨", style={'fontSize': '1rem'}),
-                html.Span(" SOS")
+                html.Span("Emergency")
             ], className='emergency-btn', id='emergency-btn', n_clicks=0),
             
             # User Info (populated by JavaScript)
@@ -3197,6 +3251,16 @@ app.layout = html.Div([
                 'padding': '16px',
                 'marginBottom': '12px',
             }),
+            
+            # Typing Indicator (Hidden by default - shows only during loading)
+            html.Div(id='typing-indicator', className='typing-indicator', children=[
+                html.Span("⏳", style={'fontSize': '10px'}),
+                html.Div(className='typing-dots', children=[
+                    html.Div(className='typing-dot'),
+                    html.Div(className='typing-dot'),
+                    html.Div(className='typing-dot'),
+                ])
+            ]),
 
             # Quick Symptom Buttons - Compact
             html.Div([
@@ -3497,6 +3561,41 @@ app.clientside_callback(
     """,
     Output('emergency-trigger', 'children'),
     Input('emergency-btn', 'n_clicks')
+)
+
+# Show typing indicator ONLY while waiting for response
+app.clientside_callback(
+    """
+    function(n_clicks, n_submit, voice_text, ...button_clicks) {
+        const triggered = window.dash_clientside.callback_context.triggered;
+        if (triggered.length > 0 && triggered[0].value) {
+            // User initiated action - show loading immediately
+            return 'typing-indicator show';
+        }
+        return 'typing-indicator';
+    }
+    """,
+    Output('typing-indicator', 'className'),
+    [Input('send-btn', 'n_clicks'),
+     Input('user-input', 'n_submit'),
+     Input('store-voice-text', 'data')] + 
+    [Input(f'btn-{id_name}', 'n_clicks') for id_name in [
+        'headache', 'fever', 'cold', 'cough', 'pain', 'nausea', 
+        'sleep', 'allergy', 'diabetes', 'bp', 'acidity', 'skin', 'vitamin', 'anxiety'
+    ]],
+    prevent_initial_call=True
+)
+
+# Hide typing indicator when response arrives
+app.clientside_callback(
+    """
+    function(chat_children) {
+        return 'typing-indicator';
+    }
+    """,
+    Output('typing-indicator', 'className', allow_duplicate=True),
+    Input('chat-history', 'children'),
+    prevent_initial_call=True
 )
 
 # Main Chat Callback
