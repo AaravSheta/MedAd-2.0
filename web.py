@@ -3134,7 +3134,7 @@ app.layout = html.Div([
             # Emergency Button
             html.Button([
                 html.Span("🚨", style={'fontSize': '1rem'}),
-                html.Span(" SOS")
+                html.Span("Emergency")
             ], className='emergency-btn', id='emergency-btn', n_clicks=0),
             
             # User Info (populated by JavaScript)
