@@ -92,13 +92,17 @@ APP_NAME = "MedAd"
 APP_TAGLINE = "Your AI-Powered Medicine Assistant"
 APP_VERSION = "3.5"  # Upgraded with MedAd 2.0 features
 
-# Modern Gradient Theme - Cyan/Blue
-PRIMARY_CYAN = "#06B6D4"
-PRIMARY_BLUE = "#3B82F6"
-ACCENT_PURPLE = "#8B5CF6"
-MEDICAL_TEAL = "#14B8A6"
-BG_COLOR = "#030712"
+# Modern Gradient Theme - Navy Blue
+PRIMARY_CYAN = "#1E3A5F"
+PRIMARY_BLUE = "#0A1628"
+ACCENT_PURPLE = "#3B82F6"
+MEDICAL_TEAL = "#1E90FF"
+BG_COLOR = "#0A1628"
 EMERGENCY_RED = "#EF4444"
+NAVY_DARK = "#0A1628"
+NAVY_MEDIUM = "#1E3A5F"
+NAVY_LIGHT = "#2E5A8F"
+NAVY_ACCENT = "#4A90D9"
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 TRANSLATE_ENABLED = True
@@ -380,90 +384,59 @@ def create_disease_analytics_graph(symptom, tfidf_scores=None):
         stats['ml_calculated'] = False
         print(f"⚠️ Using fallback stats (ML dataframe not loaded)")
     
-    # Create animated gauge chart with modern design
+    # Create column bar chart with navy blue theme
     fig = go.Figure()
     
-    # Recovery Rate Gauge - with gradient colors and animation
-    fig.add_trace(go.Indicator(
-        mode="gauge+number+delta",
-        value=stats['recovery_rate'],
-        number={'suffix': '%', 'font': {'size': 28, 'color': '#06B6D4', 'family': 'Inter'}},
-        title={'text': f"🩺 Recovery Rate", 'font': {'size': 16, 'color': '#06B6D4', 'family': 'Inter'}},
-        delta={'reference': 85, 'increasing': {'color': "#10B981"}, 'decreasing': {'color': '#EF4444'}},
-        gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': "#06B6D4", 'tickfont': {'size': 12}},
-            'bar': {'color': "rgba(6, 182, 212, 0.8)", 'thickness': 0.75},
-            'bgcolor': "rgba(6, 182, 212, 0.2)",
-            'borderwidth': 2,
-            'bordercolor': "rgba(6, 182, 212, 0.5)",
-            'steps': [
-                {'range': [0, 40], 'color': 'rgba(239, 68, 68, 0.4)'},
-                {'range': [40, 70], 'color': 'rgba(234, 179, 8, 0.4)'},
-                {'range': [70, 100], 'color': 'rgba(16, 185, 129, 0.4)'}
-            ],
-            'threshold': {
-                'line': {'color': "#06B6D4", 'width': 4},
-                'thickness': 0.8,
-                'value': stats['recovery_rate']
-            }
-        },
-        domain={'x': [0, 0.48], 'y': [0.15, 1]}
+    # Data for the bar chart
+    categories = ['Recovery Rate', 'Prevalence']
+    values = [stats['recovery_rate'], stats['prevalence']]
+    colors = ['#4A90D9', '#A78BFA']  # Navy blue accent and purple
+    
+    # Add bar trace
+    fig.add_trace(go.Bar(
+        x=categories,
+        y=values,
+        marker=dict(
+            color=colors,
+            line=dict(color='rgba(74, 144, 217, 0.8)', width=2),
+            cornerradius=8
+        ),
+        text=[f'{v:.1f}%' for v in values],
+        textposition='outside',
+        textfont=dict(size=14, color='#E0E7FF', family='Inter', weight='bold'),
+        hovertemplate='<b>%{x}</b><br>Value: %{y:.1f}%<extra></extra>'
     ))
     
-    # Prevalence Gauge
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
-        value=stats['prevalence'],
-        number={'suffix': '%', 'font': {'size': 28, 'color': '#3B82F6', 'family': 'Inter'}},
-        title={'text': "📈 Prevalence", 'font': {'size': 16, 'color': '#3B82F6', 'family': 'Inter'}},
-        gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': '#3B82F6', 'tickfont': {'size': 12}},
-            'bar': {'color': "rgba(59, 130, 246, 0.8)", 'thickness': 0.75},
-            'bgcolor': "rgba(59, 130, 246, 0.2)",
-            'borderwidth': 2,
-            'bordercolor': "rgba(59, 130, 246, 0.5)",
-            'steps': [
-                {'range': [0, 25], 'color': 'rgba(59, 130, 246, 0.3)'},
-                {'range': [25, 50], 'color': 'rgba(234, 179, 8, 0.3)'},
-                {'range': [50, 100], 'color': 'rgba(239, 68, 68, 0.3)'}
-            ],
-            'threshold': {
-                'line': {'color': "#3B82F6", 'width': 4},
-                'thickness': 0.8,
-                'value': stats['prevalence']
-            }
-        },
-        domain={'x': [0.52, 1], 'y': [0.15, 1]}
-    ))
-    
-    # Add annotation for ML info
-    ml_badge = "🤖 ML-Calculated" if stats.get('ml_calculated', False) else "📊 Statistical"
-    medicine_count = stats.get('medicine_count', 'N/A')
-    
-    fig.add_annotation(
-        x=0.5, y=-0.08,
-        text=f"⏱️ Recovery: <b>{stats['avg_duration']} days</b> | 🏥 Severity: <b>{stats['severity']}</b> | {ml_badge}",
-        showarrow=False,
-        font=dict(size=12, color='#67E8F9', family='Inter'),
-        xref='paper', yref='paper',
-        bgcolor='rgba(15, 23, 42, 0.9)',
-        bordercolor='#06B6D4',
-        borderwidth=2,
-        borderpad=6
-    )
+    # Add reference line at 50%
+    fig.add_hline(y=50, line_dash="dash", line_color="rgba(74, 144, 217, 0.4)", 
+                  annotation_text="50%", annotation_position="right",
+                  annotation_font_color="#8BA4C7")
     
     fig.update_layout(
-        paper_bgcolor='rgba(3, 7, 18, 0.95)',
-        plot_bgcolor='rgba(15, 23, 42, 0)',
-        font={'color': "#67E8F9", 'family': "Inter"},
-        height=300,
-        margin=dict(l=20, r=20, t=45, b=55),
-        transition={'duration': 800, 'easing': 'cubic-in-out'},
+        paper_bgcolor='rgba(10, 22, 40, 0.95)',  # Navy dark theme
+        plot_bgcolor='rgba(30, 58, 95, 0.3)',    # Navy medium theme
+        font={'color': "#E0E7FF", 'family': "Inter"},
+        height=200,
+        margin=dict(l=10, r=10, t=20, b=10),
+        xaxis=dict(
+            tickfont=dict(size=11, color='#8BA4C7'),
+            showgrid=False,
+            showline=False
+        ),
+        yaxis=dict(
+            range=[0, 110],
+            tickfont=dict(size=10, color='#8BA4C7'),
+            gridcolor='rgba(46, 90, 143, 0.3)',
+            showline=False,
+            ticksuffix='%'
+        ),
+        showlegend=False,
+        bargap=0.4,
         hoverlabel=dict(
-            bgcolor="#0F172A",
-            font_size=14,
+            bgcolor="#1E3A5F",
+            font_size=12,
             font_family="Inter",
-            bordercolor="#06B6D4"
+            bordercolor="#4A90D9"
         )
     )
     
@@ -1084,22 +1057,26 @@ app.index_string = f'''
             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
             
             :root {{
-                --primary: #06B6D4;
-                --primary-light: #22D3EE;
-                --primary-dark: #0891B2;
-                --accent: #67E8F9;
+                --primary: #1E3A5F;
+                --primary-light: #2E5A8F;
+                --primary-dark: #0A1628;
+                --accent: #4A90D9;
                 --secondary: #3B82F6;
-                --tertiary: #8B5CF6;
+                --tertiary: #1E90FF;
                 --medical-green: #10B981;
-                --bg-dark: #030712;
-                --bg-card: rgba(15, 23, 42, 0.8);
-                --glass-bg: rgba(15, 23, 42, 0.6);
-                --glass-border: rgba(6, 182, 212, 0.2);
+                --bg-dark: #0A1628;
+                --bg-card: rgba(10, 22, 40, 0.9);
+                --glass-bg: rgba(30, 58, 95, 0.6);
+                --glass-border: rgba(74, 144, 217, 0.3);
                 --text-primary: #F8FAFC;
                 --text-secondary: #94A3B8;
                 --text-muted: #64748B;
-                --glow-cyan: rgba(6, 182, 212, 0.4);
-                --glow-blue: rgba(59, 130, 246, 0.3);
+                --glow-cyan: rgba(74, 144, 217, 0.4);
+                --glow-blue: rgba(30, 58, 95, 0.5);
+                --navy-dark: #0A1628;
+                --navy-medium: #1E3A5F;
+                --navy-light: #2E5A8F;
+                --navy-accent: #4A90D9;
             }}
             
             * {{ 
@@ -1193,13 +1170,13 @@ app.index_string = f'''
                 50% {{ transform: translate(-30px, -40px) scale(1.05); }}
             }}
             
-            /* Left Section - 65% Features Area */
+            /* Left Section - 70% Features Area */
             .login-left {{
-                flex: 0 0 65%;
+                flex: 0 0 70%;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
-                padding: 60px 80px;
+                justify-content: flex-end;
+                padding: 30px 40px 40px 40px;
                 position: relative;
                 z-index: 2;
             }}
@@ -1208,53 +1185,58 @@ app.index_string = f'''
             .login-top-logo {{
                 display: flex;
                 align-items: center;
-                gap: 15px;
-                margin-bottom: 60px;
+                gap: 10px;
+                margin-bottom: 20px;
+                position: absolute;
+                top: 30px;
+                left: 40px;
             }}
             .login-top-logo-icon {{
                 display: none;
             }}
             .login-top-logo-text {{
-                font-size: 3.5rem;
+                font-size: 2.2rem;
                 font-weight: 900;
                 letter-spacing: -1px;
-                background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 50%, #8B5CF6 100%);
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 50%, #2E5A8F 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
                 text-shadow: none;
-                filter: drop-shadow(0 0 30px rgba(6, 182, 212, 0.4));
+                filter: drop-shadow(0 0 20px rgba(74, 144, 217, 0.4));
             }}
             .login-top-logo-text::after {{
                 content: '.';
-                background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+                background: linear-gradient(135deg, #10B981 0%, #4A90D9 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
             }}
             
-            /* Feature Cards - Glassmorphism */
+            /* Feature Cards - Compact Glassmorphism */
             .login-bottom-features {{
                 display: flex;
-                flex-direction: column;
-                gap: 16px;
-                max-width: 520px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 10px;
+                max-width: 450px;
             }}
             
             .login-feature-item {{
                 display: flex;
                 align-items: center;
-                gap: 20px;
-                background: rgba(15, 23, 42, 0.6);
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
-                border: 1px solid rgba(6, 182, 212, 0.15);
-                padding: 20px 26px;
-                border-radius: 18px;
-                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                gap: 10px;
+                background: rgba(10, 22, 40, 0.7);
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+                border: 1px solid rgba(74, 144, 217, 0.2);
+                padding: 10px 14px;
+                border-radius: 12px;
+                transition: all 0.3s ease;
                 cursor: pointer;
                 position: relative;
                 overflow: hidden;
+                flex: 0 0 auto;
             }}
             
             .login-feature-item::before {{
@@ -1281,15 +1263,15 @@ app.index_string = f'''
             }}
             
             .login-feature-item-icon {{
-                font-size: 1.6rem;
-                width: 52px;
-                height: 52px;
+                font-size: 1rem;
+                width: 32px;
+                height: 32px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
-                border-radius: 14px;
-                box-shadow: 0 8px 20px rgba(6, 182, 212, 0.35);
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 100%);
+                border-radius: 8px;
+                box-shadow: 0 4px 10px rgba(74, 144, 217, 0.3);
                 flex-shrink: 0;
                 position: relative;
                 z-index: 1;
@@ -1302,42 +1284,40 @@ app.index_string = f'''
             }}
             
             .login-feature-item-title {{
-                font-size: 1.05rem;
-                font-weight: 700;
-                margin-bottom: 4px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                margin-bottom: 0;
                 color: #fff;
             }}
             
             .login-feature-item-desc {{
-                font-size: 0.85rem;
-                color: var(--text-secondary);
-                line-height: 1.4;
+                display: none;
             }}
             
-            /* Right Sidebar - 35% Glass Panel */
+            /* Right Sidebar - 30% Glass Panel */
             .login-right {{
-                flex: 0 0 35%;
+                flex: 0 0 30%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 40px;
+                padding: 25px;
                 position: relative;
                 z-index: 2;
                 background: linear-gradient(180deg, 
-                    rgba(3, 7, 18, 0.9) 0%, 
-                    rgba(15, 23, 42, 0.95) 50%,
-                    rgba(30, 41, 59, 0.9) 100%);
+                    rgba(10, 22, 40, 0.95) 0%, 
+                    rgba(30, 58, 95, 0.9) 50%,
+                    rgba(46, 90, 143, 0.85) 100%);
                 backdrop-filter: blur(30px);
                 -webkit-backdrop-filter: blur(30px);
-                border-left: 1px solid rgba(6, 182, 212, 0.15);
-                box-shadow: -20px 0 80px rgba(0, 0, 0, 0.5);
+                border-left: 1px solid rgba(74, 144, 217, 0.2);
+                box-shadow: -15px 0 60px rgba(10, 22, 40, 0.5);
             }}
             
             .login-container {{
                 background: transparent;
-                padding: 50px 40px;
+                padding: 30px 25px;
                 width: 100%;
-                max-width: 380px;
+                max-width: 280px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -1362,13 +1342,13 @@ app.index_string = f'''
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 100px;
-                height: 100px;
-                background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 50%, #8B5CF6 100%);
-                border-radius: 28px;
-                margin-bottom: 35px;
-                box-shadow: 0 15px 50px rgba(6, 182, 212, 0.4),
-                            0 0 80px rgba(6, 182, 212, 0.2);
+                width: 70px;
+                height: 70px;
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 50%, #2E5A8F 100%);
+                border-radius: 18px;
+                margin-bottom: 20px;
+                box-shadow: 0 10px 30px rgba(74, 144, 217, 0.4),
+                            0 0 50px rgba(74, 144, 217, 0.2);
                 position: relative;
                 animation: logoFloat 4s ease-in-out infinite;
             }}
@@ -1387,51 +1367,51 @@ app.index_string = f'''
             }}
             
             .login-card-logo::before {{
-                width: 50px;
-                height: 16px;
+                width: 35px;
+                height: 12px;
             }}
             
             .login-card-logo::after {{
-                width: 16px;
-                height: 50px;
+                width: 12px;
+                height: 35px;
             }}
             
             .login-title {{
-                font-size: 2.2rem;
+                font-size: 1.6rem;
                 font-weight: 800;
                 color: white;
-                margin: 0 0 10px 0;
-                letter-spacing: 2px;
+                margin: 0 0 6px 0;
+                letter-spacing: 1px;
             }}
             
             .login-subtitle {{
                 color: var(--text-secondary);
-                font-size: 1rem;
-                margin-bottom: 45px;
+                font-size: 0.85rem;
+                margin-bottom: 25px;
                 font-weight: 400;
-                line-height: 1.6;
+                line-height: 1.5;
             }}
             
             /* CTA Button with Glow Effect */
             .enter-medad-btn {{
                 display: flex !important;
-                background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%) !important;
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 100%) !important;
                 border: none !important;
-                border-radius: 50px !important;
-                padding: 20px 55px !important;
-                font-size: 1rem !important;
+                border-radius: 30px !important;
+                padding: 14px 35px !important;
+                font-size: 0.85rem !important;
                 font-weight: 700 !important;
                 cursor: pointer !important;
                 align-items: center !important;
                 justify-content: center !important;
                 color: white !important;
                 width: 100% !important;
-                max-width: 280px !important;
-                box-shadow: 0 10px 40px rgba(6, 182, 212, 0.4),
-                            0 0 60px rgba(6, 182, 212, 0.2) !important;
+                max-width: 220px !important;
+                box-shadow: 0 8px 25px rgba(74, 144, 217, 0.4),
+                            0 0 40px rgba(74, 144, 217, 0.2) !important;
                 transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
                 text-transform: uppercase !important;
-                letter-spacing: 2px !important;
+                letter-spacing: 1px !important;
                 position: relative !important;
                 overflow: hidden !important;
             }}
@@ -1582,19 +1562,19 @@ app.index_string = f'''
                 100% {{ transform: scale(1.4); opacity: 0; }}
             }}
             
-            /* Suggestion Chips - Purple Style */
+            /* Suggestion Chips - Navy Blue Style */
             .suggestion-chip {{
-                background: rgba(30,27,75,0.95);
+                background: linear-gradient(135deg, rgba(10, 22, 40, 0.95), rgba(30, 58, 95, 0.9));
                 backdrop-filter: blur(10px);
-                border: 2px solid rgba(167,139,250,0.4);
-                border-radius: 30px;
-                padding: 12px 22px;
+                border: 1px solid rgba(74, 144, 217, 0.4);
+                border-radius: 20px;
+                padding: 6px 12px;
                 cursor: pointer;
-                transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                font-size: 13px;
+                transition: all 0.3s ease;
+                font-size: 11px;
                 font-weight: 600;
-                color: #C4B5FD;
-                box-shadow: 0 4px 15px rgba(124,58,237,0.2);
+                color: #4A90D9;
+                box-shadow: 0 2px 8px rgba(30, 58, 95, 0.2);
                 position: relative;
                 overflow: hidden;
             }}
@@ -1605,15 +1585,15 @@ app.index_string = f'''
                 left: -100%;
                 width: 100%;
                 height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent);
-                transition: 0.6s;
+                background: linear-gradient(90deg, transparent, rgba(74, 144, 217, 0.3), transparent);
+                transition: 0.5s;
             }}
             .suggestion-chip:hover {{
-                background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 100%);
                 color: white;
-                border-color: #06B6D4;
+                border-color: #4A90D9;
                 transform: translateY(-5px) scale(1.03);
-                box-shadow: 0 8px 25px rgba(6, 182, 212, 0.4);
+                box-shadow: 0 8px 25px rgba(74, 144, 217, 0.5);
             }}
             .suggestion-chip:hover::before {{
                 left: 100%;
@@ -1679,33 +1659,33 @@ app.index_string = f'''
             
             /* Location Button */
             .location-btn {{
-                background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 100%);
                 border: none;
-                border-radius: 20px;
-                padding: 14px 28px;
+                border-radius: 15px;
+                padding: 8px 16px;
                 cursor: pointer;
-                transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                transition: all 0.3s ease;
                 color: white;
                 font-weight: 600;
-                font-size: 0.95rem;
+                font-size: 0.75rem;
                 display: flex;
                 align-items: center;
-                gap: 10px;
-                box-shadow: 0 4px 20px rgba(6, 182, 212, 0.4);
+                gap: 6px;
+                box-shadow: 0 3px 12px rgba(30, 58, 95, 0.4);
             }}
             .location-btn:hover {{
-                transform: translateY(-4px) scale(1.02);
-                box-shadow: 0 8px 30px rgba(6, 182, 212, 0.4);
+                transform: translateY(-2px) scale(1.02);
+                box-shadow: 0 5px 18px rgba(74, 144, 217, 0.5);
             }}
             
-            /* Glassmorphism Card - Modern Dark */
+            /* Glassmorphism Card - Navy Blue */
             .glass-card {{
-                background: rgba(15, 23, 42, 0.8);
+                background: rgba(10, 22, 40, 0.9);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
                 border-radius: 24px;
-                border: 1px solid rgba(6, 182, 212, 0.15);
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(74, 144, 217, 0.2);
+                box-shadow: 0 10px 40px rgba(10, 22, 40, 0.5);
             }}
             
             /* Status Dot Animation */
@@ -3119,14 +3099,14 @@ app.layout = html.Div([
                 html.Div([
                     html.H1(APP_NAME, style={
                         'color': 'white', 'margin': '0',
-                        'fontSize': '3.2rem', 'fontWeight': '800', 
-                        'letterSpacing': '2px',
-                        'textShadow': '0 3px 20px rgba(6, 182, 212, 0.4)'
+                        'fontSize': '2rem', 'fontWeight': '800', 
+                        'letterSpacing': '1px',
+                        'textShadow': '0 2px 15px rgba(74, 144, 217, 0.5)'
                     }),
                     html.P(APP_TAGLINE, style={
-                        'color': '#67E8F9', 'fontSize': '1.1rem', 
-                        'marginTop': '8px', 'fontWeight': '400',
-                        'letterSpacing': '1px'
+                        'color': '#4A90D9', 'fontSize': '0.85rem', 
+                        'marginTop': '4px', 'fontWeight': '400',
+                        'letterSpacing': '0.5px'
                     }),
                 ])
             ], style={
@@ -3141,20 +3121,20 @@ app.layout = html.Div([
                 html.Span(className='status-dot active' if DATA_LOADED else 'status-dot inactive'),
                 html.Span(
                     f"  AI Active • {len(df1):,} medicines" if DATA_LOADED else "  Offline",
-                    style={'color': '#C4B5FD', 'fontSize': '0.95rem', 'marginLeft': '10px', 'fontWeight': '500'}
+                    style={'color': '#4A90D9', 'fontSize': '0.8rem', 'marginLeft': '8px', 'fontWeight': '500'}
                 )
             ], style={'display': 'flex', 'alignItems': 'center'}),
             
             # Find Pharmacy Button
             html.Button([
-                html.Span("📍", style={'fontSize': '1.3rem'}),
-                html.Span(" Find Pharmacy")
+                html.Span("📍", style={'fontSize': '1rem'}),
+                html.Span(" Pharmacy")
             ], className='location-btn', id='find-pharmacy-btn', n_clicks=0),
             
             # Emergency Button
             html.Button([
-                html.Span("🚨", style={'fontSize': '1.3rem'}),
-                html.Span(" EMERGENCY")
+                html.Span("🚨", style={'fontSize': '1rem'}),
+                html.Span(" SOS")
             ], className='emergency-btn', id='emergency-btn', n_clicks=0),
             
             # User Info (populated by JavaScript)
@@ -3166,255 +3146,248 @@ app.layout = html.Div([
         })
         
     ], style={
-        'background': 'linear-gradient(135deg, #1E1B4B 0%, #312E81 30%, #4C1D95 70%, #7C3AED 100%)',
-        'padding': '45px 25px 40px',
-        'borderRadius': '0 0 45px 45px',
-        'marginBottom': '35px',
+        'background': 'linear-gradient(135deg, #0A1628 0%, #1E3A5F 35%, #2E5A8F 70%, #4A90D9 100%)',
+        'padding': '25px 20px 22px',
+        'borderRadius': '0 0 30px 30px',
+        'marginBottom': '20px',
         'textAlign': 'center',
-        'boxShadow': '0 10px 50px rgba(124,58,237,0.35)'
+        'boxShadow': '0 8px 35px rgba(30, 58, 95, 0.5)'
     }),
 
-    # --- Main Chat Container ---
+    # --- Main Two-Column Layout: Chat + AI Analytics ---
     html.Div([
-        # Chat Box with Glass Effect
-        html.Div(id='chat-history', className='glass-card', children=[
-            # Welcome Message with AI Avatar
-            html.Div([
-                html.Div(className='ai-avatar', style={'marginRight': '18px', 'flexShrink': '0'}),
+        # Left Column - Chat Box
+        html.Div([
+            # Chat Box with Glass Effect
+            html.Div(id='chat-history', className='glass-card', children=[
+                # Welcome Message with AI Avatar
                 html.Div([
-                    html.Div(f"Welcome to {APP_NAME}!", style={
-                        'fontWeight': '700', 'fontSize': '1.15rem', 
-                        'color': '#C4B5FD', 'marginBottom': '8px'
-                    }),
-                    html.Div("I'm your AI medicine assistant. Describe your symptoms and I'll help you find the right medicine. Use the quick buttons below or type in detail!", 
-                             style={'lineHeight': '1.7', 'color': '#A78BFA', 'fontSize': '0.95rem'})
-                ])
-            ], className='chat-bubble', style={
-                'display': 'flex', 'alignItems': 'flex-start',
-                'background': 'linear-gradient(135deg, rgba(30,27,75,0.95) 0%, rgba(49,46,129,0.95) 100%)',
-                'padding': '22px 25px',
-                'borderRadius': '12px 28px 28px 28px',
-                'marginBottom': '20px',
-                'border': '1px solid rgba(124,58,237,0.4)'
-            })
-        ], style={
-            'height': '460px',
-            'overflowY': 'auto',
-            'padding': '28px',
-            'marginBottom': '25px',
-        }),
+                    html.Div(className='ai-avatar', style={'marginRight': '12px', 'flexShrink': '0'}),
+                    html.Div([
+                        html.Div(f"Welcome to {APP_NAME}!", style={
+                            'fontWeight': '600', 'fontSize': '0.95rem', 
+                            'color': '#4A90D9', 'marginBottom': '5px'
+                        }),
+                        html.Div("Describe your symptoms and I'll help you find medicine.", 
+                                 style={'lineHeight': '1.5', 'color': '#2E5A8F', 'fontSize': '0.8rem'})
+                    ])
+                ], className='chat-bubble', style={
+                    'display': 'flex', 'alignItems': 'flex-start',
+                    'background': 'linear-gradient(135deg, rgba(10, 22, 40, 0.95) 0%, rgba(30, 58, 95, 0.95) 100%)',
+                    'padding': '14px 16px',
+                    'borderRadius': '8px 18px 18px 18px',
+                    'marginBottom': '12px',
+                    'border': '1px solid rgba(74, 144, 217, 0.3)'
+                })
+            ], style={
+                'height': '320px',
+                'overflowY': 'auto',
+                'padding': '16px',
+                'marginBottom': '12px',
+            }),
 
-        # Quick Symptom Buttons - More Options & Better Layout
-        html.Div([
+            # Quick Symptom Buttons - Compact
             html.Div([
-                html.Span("⚡", style={'fontSize': '1.3rem'}),
-                html.Span(" Quick Search:", style={'fontWeight': '700', 'color': '#A78BFA', 'marginLeft': '8px'})
-            ], style={'marginRight': '15px', 'display': 'flex', 'alignItems': 'center'}),
-        ] + [
-            html.Button(f"{emoji} {label}", id=f'btn-{id_name}', n_clicks=0, className='suggestion-chip')
-            for id_name, label, emoji in [
-                ('headache', 'Headache', '🤕'),
-                ('fever', 'Fever', '🌡️'),
-                ('cold', 'Cold & Flu', '🤧'),
-                ('cough', 'Cough', '😷'),
-                ('pain', 'Body Pain', '💪'),
-                ('nausea', 'Nausea', '🤢'),
-                ('sleep', 'Sleep', '😴'),
-                ('allergy', 'Allergy', '🤧'),
-                ('diabetes', 'Diabetes', '🩸'),
-                ('bp', 'Blood Pressure', '❤️'),
-                ('acidity', 'Acidity', '🔥'),
-                ('skin', 'Skin Issues', '🧴'),
-                ('vitamin', 'Vitamins', '💊'),
-                ('anxiety', 'Anxiety', '😰'),
-            ]
-        ], style={
-            'marginBottom': '28px', 'display': 'flex', 'gap': '10px',
-            'flexWrap': 'wrap', 'alignItems': 'center', 'justifyContent': 'center'
-        }),
+                html.Div([
+                    html.Span("⚡", style={'fontSize': '0.9rem'}),
+                    html.Span(" Quick:", style={'fontWeight': '600', 'color': '#4A90D9', 'marginLeft': '4px', 'fontSize': '0.75rem'})
+                ], style={'marginRight': '8px', 'display': 'flex', 'alignItems': 'center'}),
+            ] + [
+                html.Button(f"{emoji} {label}", id=f'btn-{id_name}', n_clicks=0, className='suggestion-chip')
+                for id_name, label, emoji in [
+                    ('headache', 'Headache', '🤕'),
+                    ('fever', 'Fever', '🌡️'),
+                    ('cold', 'Cold', '🤧'),
+                    ('cough', 'Cough', '😷'),
+                    ('pain', 'Pain', '💪'),
+                    ('nausea', 'Nausea', '🤢'),
+                    ('sleep', 'Sleep', '😴'),
+                    ('allergy', 'Allergy', '🤧'),
+                    ('diabetes', 'Diabetes', '🩸'),
+                    ('bp', 'BP', '❤️'),
+                    ('acidity', 'Acidity', '🔥'),
+                    ('skin', 'Skin', '🧴'),
+                    ('vitamin', 'Vitamins', '💊'),
+                    ('anxiety', 'Anxiety', '😰'),
+                ]
+            ], style={
+                'marginBottom': '12px', 'display': 'flex', 'gap': '6px',
+                'flexWrap': 'wrap', 'alignItems': 'center', 'justifyContent': 'center'
+            }),
 
-        # 🆕 MedAd 2.0: Multimodal Input Section
-        html.Div([
-            # Row 1: Main Input Features
+            # Voice & Image Input - Compact Row
             html.Div([
                 # Voice Input Button
-                html.Div([
-                    html.Button([
-                        html.Span("🎤", style={'fontSize': '1.3rem', 'marginRight': '6px'}),
-                        html.Span("Voice Search", id='voice-btn-text')
-                    ], id='voice-input-btn', n_clicks=0, style={
-                        'width': '100%', 'padding': '12px 16px',
-                        'borderRadius': '12px', 'border': '2px solid #A78BFA',
-                        'background': 'linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(124, 58, 237, 0.3))',
-                        'cursor': 'pointer', 'fontWeight': '600',
-                        'color': '#A78BFA', 'transition': 'all 0.3s ease',
-                        'fontSize': '0.9rem'
-                    }),
-                    html.Div(id='voice-status', style={
-                        'marginTop': '5px', 'fontSize': '0.75rem', 
-                        'color': '#C4B5FD', 'textAlign': 'center'
-                    })
-                ], style={'flex': '1', 'minWidth': '130px'}),
+                html.Button([
+                    html.Span("🎤", style={'fontSize': '1rem', 'marginRight': '5px'}),
+                    html.Span("Voice", id='voice-btn-text', style={'fontSize': '0.8rem'})
+                ], id='voice-input-btn', n_clicks=0, style={
+                    'padding': '10px 16px',
+                    'borderRadius': '10px', 'border': '2px solid #4A90D9',
+                    'background': 'linear-gradient(135deg, #1E3A5F 0%, #2E5A8F 100%)',
+                    'cursor': 'pointer', 'fontWeight': '600',
+                    'color': '#FFFFFF', 'transition': 'all 0.3s ease',
+                    'fontSize': '0.8rem', 'boxShadow': '0 3px 12px rgba(74, 144, 217, 0.3)'
+                }),
+                html.Div(id='voice-status', style={'display': 'none'}),
                 
-                # 3D Prevalence View
-                html.Div([
-                    html.Button([
-                        html.Span("📊", style={'fontSize': '1.3rem', 'marginRight': '6px'}),
-                        html.Span("3D Analytics")
-                    ], id='toggle-3d-btn', n_clicks=0, style={
-                        'width': '100%', 'padding': '12px 16px',
-                        'borderRadius': '12px', 'border': '2px solid #7C3AED',
-                        'background': 'linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(167, 139, 250, 0.3))',
-                        'cursor': 'pointer', 'fontWeight': '600',
-                        'color': '#A78BFA', 'transition': 'all 0.3s ease',
-                        'fontSize': '0.9rem'
-                    })
-                ], style={'flex': '1', 'minWidth': '130px'}),
-                
-                # Hinglish Mode Toggle
-                html.Div([
-                    html.Button([
-                        html.Span("🗣️", style={'fontSize': '1.3rem', 'marginRight': '6px'}),
-                        html.Span("Hinglish")
-                    ], id='hinglish-mode-btn', n_clicks=0, style={
-                        'width': '100%', 'padding': '12px 16px',
-                        'borderRadius': '12px', 'border': '2px solid #C4B5FD',
-                        'background': 'linear-gradient(135deg, rgba(196, 181, 253, 0.2), rgba(167, 139, 250, 0.3))',
-                        'cursor': 'pointer', 'fontWeight': '600',
-                        'color': '#C4B5FD', 'transition': 'all 0.3s ease',
-                        'fontSize': '0.9rem'
-                    })
-                ], style={'flex': '1', 'minWidth': '120px'}),
-                
-                # AI Insights
-                html.Div([
-                    html.Button([
-                        html.Span("🧠", style={'fontSize': '1.3rem', 'marginRight': '6px'}),
-                        html.Span("AI Insights")
-                    ], id='ai-insights-btn', n_clicks=0, style={
-                        'width': '100%', 'padding': '12px 16px',
-                        'borderRadius': '12px', 'border': '2px solid #A78BFA',
-                        'background': 'linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(196, 181, 253, 0.3))',
-                        'cursor': 'pointer', 'fontWeight': '600',
-                        'color': '#A78BFA', 'transition': 'all 0.3s ease',
-                        'fontSize': '0.9rem'
-                    })
-                ], style={'flex': '1', 'minWidth': '120px'}),
-            ], style={
-                'display': 'flex', 'gap': '10px', 'marginBottom': '12px',
-                'flexWrap': 'wrap', 'justifyContent': 'center'
-            }),
-            
-            # Row 2: Skin Analysis Upload
-            html.Div([
+                # Image Upload Button
                 dcc.Upload(
                     id='skin-image-upload',
                     children=html.Div([
-                        html.Span("📷", style={'fontSize': '1.2rem', 'marginRight': '8px'}),
-                        html.Span("Upload Skin Image for AI Analysis", style={'fontWeight': '600', 'fontSize': '0.9rem'})
+                        html.Span("📷", style={'fontSize': '1rem', 'marginRight': '5px'}),
+                        html.Span("Image", style={'fontWeight': '600', 'fontSize': '0.8rem'})
                     ]),
                     style={
-                        'width': '100%', 'padding': '12px 20px',
-                        'borderRadius': '12px', 'border': '2px dashed #7C3AED',
-                        'background': 'linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(167, 139, 250, 0.2))',
+                        'padding': '10px 16px',
+                        'borderRadius': '10px', 'border': '2px solid #4A90D9',
+                        'background': 'linear-gradient(135deg, #2E5A8F 0%, #4A90D9 100%)',
                         'cursor': 'pointer', 'textAlign': 'center',
-                        'transition': 'all 0.3s ease', 'color': '#A78BFA'
+                        'transition': 'all 0.3s ease', 'color': '#FFFFFF',
+                        'boxShadow': '0 3px 12px rgba(74, 144, 217, 0.3)',
+                        'display': 'inline-flex', 'alignItems': 'center'
                     },
                     multiple=False,
                     accept='image/*'
                 ),
-                html.Div(id='skin-analysis-result', style={'marginTop': '8px'})
-            ], style={'marginBottom': '10px'}),
+                html.Div(id='skin-analysis-result', style={'display': 'none'}),
+                
+                # Hinglish Button
+                html.Button([
+                    html.Span("🗣️", style={'fontSize': '0.9rem', 'marginRight': '4px'}),
+                    html.Span("Hinglish")
+                ], id='hinglish-mode-btn', n_clicks=0, style={
+                    'padding': '10px 14px',
+                    'borderRadius': '10px', 'border': '1px solid #2E5A8F',
+                    'background': 'rgba(30, 58, 95, 0.6)',
+                    'cursor': 'pointer', 'fontWeight': '500',
+                    'color': '#4A90D9', 'fontSize': '0.75rem'
+                }),
+            ], style={
+                'display': 'flex', 'gap': '8px', 'marginBottom': '12px',
+                'justifyContent': 'center', 'alignItems': 'center'
+            }),
             
-            # Hinglish hint
+            html.Div(id='hinglish-hint', style={'display': 'none'}),
+
+            # Input Area - Compact
             html.Div([
-                html.Span("💡 ", style={'fontSize': '0.8rem'}),
-                html.Span("Try: ", style={'color': '#A78BFA', 'fontSize': '0.8rem'}),
-                html.Span("'sar me dard' • 'bukhar aur khansi' • 'pet dard'", style={
-                    'color': '#C4B5FD', 'fontSize': '0.8rem', 'fontStyle': 'italic'
-                })
-            ], id='hinglish-hint', style={
-                'textAlign': 'center', 'padding': '8px',
-                'background': 'rgba(124,58,237,0.15)', 'borderRadius': '8px',
-                'display': 'none'
+                dcc.Input(
+                    id='user-input',
+                    type='text',
+                    placeholder='💬 Describe symptoms...',
+                    className='chat-input',
+                    style={
+                        'flex': '1', 'padding': '12px 18px', 'borderRadius': '25px',
+                        'border': '2px solid rgba(74, 144, 217, 0.4)', 'fontSize': '0.85rem',
+                        'background': 'rgba(10, 22, 40, 0.9)',
+                        'boxShadow': '0 3px 10px rgba(30, 58, 95, 0.2)',
+                        'color': '#E0E7FF',
+                    }
+                ),
+                html.Button([
+                    html.Span("🔍", style={'fontSize': '1rem'}),
+                ],
+                    id='send-btn',
+                    n_clicks=0,
+                    className='send-btn',
+                    style={
+                        'padding': '12px 20px',
+                        'background': 'linear-gradient(135deg, #1E3A5F 0%, #4A90D9 100%)',
+                        'color': 'white', 'border': 'none', 'borderRadius': '25px',
+                        'cursor': 'pointer', 'fontWeight': '700',
+                        'boxShadow': '0 4px 15px rgba(74, 144, 217, 0.4)',
+                    }
+                )
+            ], style={'display': 'flex', 'gap': '10px', 'alignItems': 'center'})
+        ], style={'flex': '2', 'minWidth': '450px'}),
+        
+        # Right Column - AI Analytics Panel
+        html.Div([
+            html.Div([
+                html.H4([
+                    html.Span("🧠", style={'marginRight': '8px'}),
+                    "AI Disease Analytics"
+                ], style={
+                    'color': '#4A90D9', 'marginBottom': '12px', 'fontSize': '1rem',
+                    'fontWeight': '700', 'textAlign': 'center'
+                }),
+                
+                # Analytics Content Area
+                html.Div(id='ai-analytics-content', children=[
+                    # Default state
+                    html.Div([
+                        html.Div("📊", style={'fontSize': '2rem', 'marginBottom': '10px'}),
+                        html.P("Search for symptoms to see AI analytics", style={
+                            'color': '#2E5A8F', 'fontSize': '0.8rem', 'textAlign': 'center'
+                        })
+                    ], style={'textAlign': 'center', 'padding': '30px 10px'})
+                ], style={
+                    'minHeight': '250px',
+                    'maxHeight': '450px',
+                    'overflowY': 'auto'
+                }),
+                
+                # AI Insights Button
+                html.Button([
+                    html.Span("💡", style={'marginRight': '6px'}),
+                    html.Span("AI Insights")
+                ], id='ai-insights-btn', n_clicks=0, style={
+                    'width': '100%', 'padding': '10px',
+                    'borderRadius': '10px', 'border': '1px solid #2E5A8F',
+                    'background': 'rgba(30, 58, 95, 0.5)',
+                    'cursor': 'pointer', 'fontWeight': '600',
+                    'color': '#4A90D9', 'fontSize': '0.8rem',
+                    'marginTop': '10px'
+                }),
+            ], style={
+                'background': 'linear-gradient(135deg, rgba(10, 22, 40, 0.95), rgba(30, 58, 95, 0.9))',
+                'borderRadius': '16px',
+                'padding': '16px',
+                'border': '1px solid rgba(74, 144, 217, 0.3)',
+                'boxShadow': '0 4px 20px rgba(30, 58, 95, 0.4)',
+                'height': '100%'
+            })
+        ], style={'width': '300px', 'flexShrink': '0'}),
+        
+    ], style={
+        'display': 'flex', 'gap': '20px', 'maxWidth': '1100px', 
+        'margin': '0 auto', 'padding': '0 20px 60px 20px', 'alignItems': 'flex-start'
+    }),
+
+    # 3D Visualization Container (Hidden by default)
+    html.Div([
+        html.Div([
+            html.H4("📊 Medicine Analytics - Prevalence & Recovery", style={
+                'color': '#4A90D9', 'marginBottom': '10px', 'fontSize': '0.95rem'
+            }),
+            html.P("3D visualization of medicine efficacy", style={
+                'color': '#2E5A8F', 'fontSize': '0.8rem', 'marginBottom': '10px'
+            }),
+            dcc.Graph(id='drug-3d-graph', style={'height': '300px'}),
+            html.Button("✕ Close", id='close-3d-btn', n_clicks=0, style={
+                'marginTop': '8px', 'padding': '8px 20px',
+                'borderRadius': '15px', 'border': 'none',
+                'background': '#EF4444', 'color': 'white',
+                'cursor': 'pointer', 'fontWeight': '600', 'fontSize': '0.8rem'
             })
         ], style={
-            'marginBottom': '20px', 'padding': '15px',
-            'background': 'rgba(30,27,75,0.7)', 'borderRadius': '16px',
-            'boxShadow': '0 2px 10px rgba(124,58,237,0.15)'
-        }) if MEDAD_V2_AVAILABLE else html.Div(),
-
-        # 3D Visualization Container (Hidden by default)
-        html.Div([
-            html.Div([
-                html.H4("📊 Medicine Analytics - Prevalence & Recovery", style={
-                    'color': '#A78BFA', 'marginBottom': '10px'
-                }),
-                html.P("3D visualization of medicine efficacy, prevalence, and recovery rates", style={
-                    'color': '#C4B5FD', 'fontSize': '0.9rem', 'marginBottom': '15px'
-                }),
-                dcc.Graph(id='drug-3d-graph', style={'height': '400px'}),
-                html.Button("✕ Close", id='close-3d-btn', n_clicks=0, style={
-                    'marginTop': '10px', 'padding': '10px 25px',
-                    'borderRadius': '20px', 'border': 'none',
-                    'background': '#EF4444', 'color': 'white',
-                    'cursor': 'pointer', 'fontWeight': '600'
-                })
-            ], style={
-                'background': '#1E1B4B', 'borderRadius': '20px',
-                'padding': '25px', 'boxShadow': '0 10px 40px rgba(124,58,237,0.25)',
-                'border': '1px solid rgba(124,58,237,0.3)'
-            })
-        ], id='3d-viz-container', style={'display': 'none', 'marginBottom': '25px'}),
-
-        # Input Area - Premium Design with Voice Input
-        html.Div([
-            dcc.Input(
-                id='user-input',
-                type='text',
-                placeholder='💬 Describe your symptoms in detail (English or Hinglish)...',
-                className='chat-input',
-                style={
-                    'flex': '1', 'padding': '20px 28px', 'borderRadius': '35px',
-                    'border': '2px solid rgba(124,58,237,0.4)', 'fontSize': '1rem',
-                    'background': 'rgba(30,27,75,0.9)',
-                    'boxShadow': '0 4px 15px rgba(124,58,237,0.15)',
-                    'color': '#E0E7FF',
-                }
-            ),
-            html.Button([
-                html.Span("🔍", style={'marginRight': '10px', 'fontSize': '1.2rem'}),
-                html.Span("Find Medicine")
-            ],
-                id='send-btn',
-                n_clicks=0,
-                className='send-btn',
-                style={
-                    'padding': '20px 40px',
-                    'background': 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
-                    'color': 'white', 'border': 'none', 'borderRadius': '35px',
-                    'cursor': 'pointer', 'fontWeight': '700', 'fontSize': '1.05rem',
-                    'boxShadow': '0 6px 25px rgba(124,58,237,0.4)',
-                    'display': 'flex', 'alignItems': 'center'
-                }
-            )
-        ], style={'display': 'flex', 'gap': '18px', 'alignItems': 'center'})
-
-    ], style={
-        'maxWidth': '1050px', 'margin': '0 auto', 'padding': '0 28px',
-        'paddingBottom': '50px'
-    }),
+            'background': 'linear-gradient(135deg, #0A1628, #1E3A5F)', 'borderRadius': '16px',
+            'padding': '16px', 'boxShadow': '0 8px 30px rgba(30, 58, 95, 0.4)',
+            'border': '1px solid rgba(74, 144, 217, 0.3)'
+        })
+    ], id='3d-viz-container', style={'display': 'none', 'marginBottom': '15px', 'maxWidth': '900px', 'margin': '15px auto', 'padding': '0 20px'}),
 
     # --- Compact Footer (Non-obstructive) ---
     html.Footer([
-        html.Span("⚕️ ", style={'marginRight': '8px'}),
+        html.Span("⚕️ ", style={'marginRight': '6px'}),
         html.Span("For educational purposes only. Consult a doctor. Emergency: 102/108", style={'opacity': '0.9'})
     ], style={
-        'position': 'fixed', 'bottom': '0', 'width': '100%',
-        'background': 'rgba(30, 27, 75, 0.98)',
-        'color': '#C4B5FD', 'textAlign': 'center', 'padding': '8px 15px',
-        'fontSize': '0.8rem', 'zIndex': '1000',
-        'borderTop': '1px solid rgba(124,58,237,0.3)'
+        'position': 'fixed', 'bottom': '0', 'left': '0', 'width': '100%',
+        'background': 'rgba(10, 22, 40, 0.95)',
+        'color': '#4A90D9', 'textAlign': 'center', 'padding': '5px 10px',
+        'fontSize': '0.65rem', 'zIndex': '999',
+        'borderTop': '1px solid rgba(74, 144, 217, 0.2)'
     }),
 
     ]),  # End of main-app div
@@ -3432,6 +3405,7 @@ app.layout = html.Div([
     html.Div(id='fallback-google-trigger', style={'display': 'none'}),
     html.Div(id='emergency-trigger', style={'display': 'none'}),
     html.Div(id='voice-trigger', style={'display': 'none'}),  # 🆕 MedAd 2.0
+    html.Button(id='toggle-3d-btn', n_clicks=0, style={'display': 'none'}),  # Hidden placeholder
 
 
 ])
@@ -3517,7 +3491,8 @@ app.clientside_callback(
 @app.callback(
     [Output('chat-history', 'children'),
      Output('store-conversation', 'data'),
-     Output('user-input', 'value')],
+     Output('user-input', 'value'),
+     Output('ai-analytics-content', 'children')],
     [Input('send-btn', 'n_clicks'),
      Input('user-input', 'n_submit'),
      Input('store-voice-text', 'data')] + 
@@ -3534,9 +3509,12 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
     btn_clicks = args[:-2]
     user_text, conversation = args[-2], args[-1]
     
+    # Initialize analytics content (for the side panel)
+    analytics_content = dash.no_update
+    
     ctx = callback_context
     if not ctx.triggered:
-        return dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
@@ -3572,7 +3550,7 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
         display_text, final_text = symptom_map[trigger_id]
     
     if not final_text:
-        return dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     # 🌐 GOOGLE TRANSLATE: Auto-translate Hindi/Regional to English
     original_text = final_text
@@ -3724,7 +3702,7 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
                     }
                 ))
                 
-                # Add AI Disease Analytics Graph
+                # Create AI Disease Analytics for the side panel
                 try:
                     # Get the search term for analytics
                     user_symptom = conversation[-2]['content'] if len(conversation) >= 2 else 'cold'
@@ -3740,43 +3718,71 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
                     fig, stats = create_disease_analytics_graph(user_symptom, tfidf_scores_for_ml)
                     
                     # Determine ML badge
-                    ml_badge = "🤖 ML-Calculated" if stats.get('ml_calculated', False) else "📊 Statistical"
+                    ml_badge = "🤖 ML" if stats.get('ml_calculated', False) else "📊 Stats"
                     
-                    chat_bubbles.append(html.Div([
+                    # Store analytics content for the side panel (not chat)
+                    analytics_content = html.Div([
                         html.Div([
-                            html.Span("📊", style={'fontSize': '1.2rem'}),
-                            html.Span(" AI Disease Analytics", style={'fontWeight': '700'}),
-                            html.Span(f" • {ml_badge}", style={
-                                'fontSize': '0.75rem', 
-                                'marginLeft': '10px',
+                            html.Span(ml_badge, style={
+                                'fontSize': '0.65rem',
                                 'background': 'linear-gradient(135deg, #7C3AED, #A78BFA)',
                                 'color': 'white',
-                                'padding': '4px 10px',
-                                'borderRadius': '12px'
+                                'padding': '3px 8px',
+                                'borderRadius': '10px',
+                                'display': 'inline-block',
+                                'marginBottom': '8px'
                             })
-                        ], className='analytics-title'),
+                        ], style={'textAlign': 'center'}),
                         
                         dcc.Graph(
                             figure=fig,
                             config={'displayModeBar': False, 'responsive': True},
-                            style={'height': '240px'}
+                            style={'height': '200px', 'marginBottom': '8px'}
                         ),
                         
                         html.Div([
                             html.Div([
-                                html.Div(f"{stats['avg_duration']} days", className='stat-value'),
-                                html.Div("Avg Recovery", className='stat-label')
-                            ], className='stat-card'),
-                            html.Div([
-                                html.Div(stats['severity'], className='stat-value', style={
-                                    'color': '#EF4444' if stats['severity'] == 'High' else '#F59E0B' if stats['severity'] == 'Medium' else '#A78BFA'
+                                html.Div(f"{stats['avg_duration']} days", style={
+                                    'fontSize': '1.1rem', 'fontWeight': '700', 'color': '#4A90D9'
                                 }),
-                                html.Div("Severity Level", className='stat-label')
-                            ], className='stat-card'),
-                        ], className='analytics-stats')
-                    ], className='analytics-container'))
+                                html.Div("Avg Recovery", style={
+                                    'fontSize': '0.65rem', 'color': '#8BA4C7'
+                                })
+                            ], style={
+                                'background': 'rgba(30, 58, 95, 0.5)',
+                                'borderRadius': '10px', 'padding': '10px',
+                                'textAlign': 'center', 'flex': '1'
+                            }),
+                            html.Div([
+                                html.Div(stats['severity'], style={
+                                    'fontSize': '1.1rem', 'fontWeight': '700',
+                                    'color': '#EF4444' if stats['severity'] == 'High' else '#F59E0B' if stats['severity'] == 'Medium' else '#22C55E'
+                                }),
+                                html.Div("Severity", style={
+                                    'fontSize': '0.65rem', 'color': '#8BA4C7'
+                                })
+                            ], style={
+                                'background': 'rgba(30, 58, 95, 0.5)',
+                                'borderRadius': '10px', 'padding': '10px',
+                                'textAlign': 'center', 'flex': '1'
+                            }),
+                        ], style={'display': 'flex', 'gap': '8px'}),
+                        
+                        # Symptom searched
+                        html.Div([
+                            html.Span("🔍 ", style={'fontSize': '0.7rem'}),
+                            html.Span(user_symptom.title(), style={
+                                'color': '#A78BFA', 'fontWeight': '600', 'fontSize': '0.75rem'
+                            })
+                        ], style={
+                            'textAlign': 'center', 'marginTop': '10px',
+                            'padding': '6px', 'background': 'rgba(124, 58, 237, 0.2)',
+                            'borderRadius': '8px'
+                        })
+                    ])
                 except Exception as e:
                     print(f"Analytics error: {e}")
+                    analytics_content = dash.no_update
                 
                 # Add Gemini AI Health Advice (if available)
                 gemini_advice = msg.get('gemini_advice')
@@ -3800,7 +3806,7 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
                         'boxShadow': '0 4px 15px rgba(124,58,237,0.2)'
                     }))
 
-    return chat_bubbles, conversation, ""
+    return chat_bubbles, conversation, "", analytics_content
 
 # =============================================================================
 # 🆕 MEDAD 2.0 CALLBACKS - Multimodal Features
