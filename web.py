@@ -454,29 +454,41 @@ def extract_zip_if_needed(zip_path, extract_to='.'):
     return False
 
 def load_data():
-    """Load both medicine datasets"""
+    """Load both medicine datasets - uses Parquet for better performance"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
+    # Try Parquet first (faster, memory-efficient), fallback to CSV
+    parquet1 = os.path.join(script_dir, 'all_medicine_database.parquet')
     file1 = os.path.join(script_dir, 'all_medicine databased.csv')
-    if not os.path.exists(file1):
-        print(f"CRITICAL ERROR: 'all_medicine databased.csv' not found in {script_dir}")
-        return None, None
     
-    df1 = pd.read_csv(file1, low_memory=False)
+    if os.path.exists(parquet1):
+        print("📦 Loading from Parquet (optimized)...")
+        df1 = pd.read_parquet(parquet1)
+    elif os.path.exists(file1):
+        print("📄 Loading from CSV...")
+        df1 = pd.read_csv(file1, low_memory=False)
+    else:
+        print(f"CRITICAL ERROR: Medicine database not found in {script_dir}")
+        return None, None
 
+    # Try Parquet first for second dataset
+    parquet2 = os.path.join(script_dir, 'medicine_dataset.parquet')
     file2 = os.path.join(script_dir, 'medicine_dataset.csv')
     zip2 = os.path.join(script_dir, 'medicine_dataset.csv.zip')
     
-    if not os.path.exists(file2):
-        if os.path.exists(zip2):
-            print("Unzipping dataset...")
-            extract_zip_if_needed(zip2, script_dir)
-    
-    if not os.path.exists(file2):
-        print(f"CRITICAL ERROR: 'medicine_dataset.csv' not found.")
-        return None, None
+    if os.path.exists(parquet2):
+        df2 = pd.read_parquet(parquet2)
+    else:
+        if not os.path.exists(file2):
+            if os.path.exists(zip2):
+                print("Unzipping dataset...")
+                extract_zip_if_needed(zip2, script_dir)
         
-    df2 = pd.read_csv(file2, low_memory=False)
+        if not os.path.exists(file2):
+            print(f"CRITICAL ERROR: 'medicine_dataset.csv' not found.")
+            return None, None
+            
+        df2 = pd.read_csv(file2, low_memory=False)
 
     # Enhanced Preprocessing
     use_cols = [c for c in df1.columns if 'use' in c.lower()]
