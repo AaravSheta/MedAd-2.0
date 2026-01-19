@@ -8,3 +8,8 @@ scikit-learn>=1.3.0
 plotly>=5.18.0
 gunicorn>=21.0.0
 python-dotenv>=1.0.0
+
+# User Authentication
+flask-login>=0.6.0
+flask-sqlalchemy>=3.1.0
+werkzeug>=3.0.0

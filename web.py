@@ -13,8 +13,16 @@ from datetime import datetime
 import plotly.graph_objects as go
 from dotenv import load_dotenv
 import urllib.request
+from flask import Flask, request, redirect, url_for, session
+from flask_login import LoginManager, login_user, logout_user, current_user, login_required
+import secrets
     
 load_dotenv()
+
+# =============================================================================
+# USER AUTHENTICATION SETUP
+# =============================================================================
+from models import db, User, init_db, save_message, get_or_create_session
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -1042,11 +1050,31 @@ def get_ai_recommendation(user_input):
     return valid_medicines, None
 
 # =============================================================================
-# 3. DASH APP SETUP
+# 3. DASH APP SETUP WITH FLASK-LOGIN
 # =============================================================================
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
-server = app.server  # For deployment
+# Create Flask server first
+server = Flask(__name__)
+server.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
+
+# Configure SQLAlchemy
+server.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///medad_users.db')
+server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize database
+init_db(server)
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(server)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# Create Dash app with Flask server
+app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
 
 # =============================================================================
 # 4. CSS STYLING - Premium Hospital Theme
@@ -1399,9 +1427,163 @@ app.index_string = f'''
             .login-subtitle {{
                 color: var(--text-secondary);
                 font-size: 0.85rem;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
                 font-weight: 400;
                 line-height: 1.5;
+            }}
+            
+            /* Auth Form Styles */
+            .auth-form {{
+                width: 100%;
+                max-width: 280px;
+                margin-bottom: 15px;
+            }}
+            
+            .auth-input {{
+                width: 100%;
+                padding: 12px 16px;
+                background: rgba(10, 22, 40, 0.8);
+                border: 1px solid rgba(74, 144, 217, 0.3);
+                border-radius: 12px;
+                color: white;
+                font-size: 0.9rem;
+                margin-bottom: 12px;
+                transition: all 0.3s ease;
+                outline: none;
+            }}
+            
+            .auth-input::placeholder {{
+                color: rgba(148, 163, 184, 0.6);
+            }}
+            
+            .auth-input:focus {{
+                border-color: #4A90D9;
+                box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.2);
+            }}
+            
+            .auth-btn {{
+                width: 100%;
+                padding: 12px 24px;
+                background: linear-gradient(135deg, #1E3A5F 0%, #4A90D9 100%);
+                border: none;
+                border-radius: 25px;
+                color: white;
+                font-size: 0.9rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 10px;
+            }}
+            
+            .auth-btn:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(74, 144, 217, 0.4);
+            }}
+            
+            .auth-btn.secondary {{
+                background: transparent;
+                border: 1px solid rgba(74, 144, 217, 0.4);
+            }}
+            
+            .auth-btn.secondary:hover {{
+                background: rgba(74, 144, 217, 0.1);
+            }}
+            
+            .auth-divider {{
+                display: flex;
+                align-items: center;
+                margin: 15px 0;
+                color: rgba(148, 163, 184, 0.5);
+                font-size: 0.8rem;
+            }}
+            
+            .auth-divider::before,
+            .auth-divider::after {{
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: rgba(74, 144, 217, 0.2);
+            }}
+            
+            .auth-divider span {{
+                padding: 0 15px;
+            }}
+            
+            .auth-toggle {{
+                color: #4A90D9;
+                cursor: pointer;
+                font-size: 0.85rem;
+                text-decoration: none;
+                transition: color 0.3s;
+            }}
+            
+            .auth-toggle:hover {{
+                color: #6BB5FF;
+                text-decoration: underline;
+            }}
+            
+            .auth-error {{
+                background: rgba(239, 68, 68, 0.15);
+                border: 1px solid rgba(239, 68, 68, 0.3);
+                color: #FCA5A5;
+                padding: 10px 15px;
+                border-radius: 10px;
+                font-size: 0.85rem;
+                margin-bottom: 15px;
+                text-align: center;
+            }}
+            
+            .auth-success {{
+                background: rgba(16, 185, 129, 0.15);
+                border: 1px solid rgba(16, 185, 129, 0.3);
+                color: #6EE7B7;
+                padding: 10px 15px;
+                border-radius: 10px;
+                font-size: 0.85rem;
+                margin-bottom: 15px;
+                text-align: center;
+            }}
+            
+            .user-badge {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(30, 58, 95, 0.6);
+                padding: 6px 14px;
+                border-radius: 20px;
+                border: 1px solid rgba(74, 144, 217, 0.3);
+            }}
+            
+            .user-badge-avatar {{
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #4A90D9, #1E3A5F);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75rem;
+                color: white;
+                font-weight: 600;
+            }}
+            
+            .user-badge-name {{
+                color: #E0E7FF;
+                font-size: 0.85rem;
+                font-weight: 500;
+            }}
+            
+            .logout-link {{
+                color: #EF4444;
+                font-size: 0.8rem;
+                cursor: pointer;
+                margin-left: 8px;
+            }}
+            
+            .logout-link:hover {{
+                text-decoration: underline;
             }}
             
             /* CTA Button with Glow Effect */
@@ -1454,7 +1636,7 @@ app.index_string = f'''
                 display: flex;
                 justify-content: center;
                 gap: 35px;
-                margin-top: 50px;
+                margin-top: 30px;
             }}
             
             .login-footer-item {{
@@ -3124,11 +3306,65 @@ app.layout = html.Div([
                 html.H1(APP_NAME, className='login-title'),
                 html.P("Your AI-Powered Medicine Assistant", className='login-subtitle'),
                 
-                # Enter MedAd Button with Glow
+                # Auth Error/Success Messages
+                html.Div(id='auth-message', children=[]),
+                
+                # Login Form (shown by default)
+                html.Div(id='login-form-container', children=[
+                    html.Div(className='auth-form', children=[
+                        dcc.Input(
+                            id='login-email',
+                            type='email',
+                            placeholder='Email address',
+                            className='auth-input'
+                        ),
+                        dcc.Input(
+                            id='login-password',
+                            type='password',
+                            placeholder='Password',
+                            className='auth-input'
+                        ),
+                        html.Button('Login', id='login-btn', n_clicks=0, className='auth-btn'),
+                    ]),
+                    html.Div(className='auth-divider', children=[html.Span("or")]),
+                    html.Span("Don't have an account? ", style={'color': 'var(--text-secondary)', 'fontSize': '0.85rem'}),
+                    html.Span("Sign up", id='show-register', n_clicks=0, className='auth-toggle'),
+                ]),
+                
+                # Register Form (hidden by default)
+                html.Div(id='register-form-container', style={'display': 'none'}, children=[
+                    html.Div(className='auth-form', children=[
+                        dcc.Input(
+                            id='register-name',
+                            type='text',
+                            placeholder='Your name',
+                            className='auth-input'
+                        ),
+                        dcc.Input(
+                            id='register-email',
+                            type='email',
+                            placeholder='Email address',
+                            className='auth-input'
+                        ),
+                        dcc.Input(
+                            id='register-password',
+                            type='password',
+                            placeholder='Password (min 6 chars)',
+                            className='auth-input'
+                        ),
+                        html.Button('Create Account', id='register-btn', n_clicks=0, className='auth-btn'),
+                    ]),
+                    html.Div(className='auth-divider', children=[html.Span("or")]),
+                    html.Span("Already have an account? ", style={'color': 'var(--text-secondary)', 'fontSize': '0.85rem'}),
+                    html.Span("Login", id='show-login', n_clicks=0, className='auth-toggle'),
+                ]),
+                
+                # Continue as Guest option
+                html.Div(className='auth-divider', children=[html.Span("or")]),
                 html.Button([
-                    html.Span("🚀", style={'marginRight': '12px', 'fontSize': '1.3rem'}),
-                    "ENTER MEDAD"
-                ], id='skip-login-btn', n_clicks=0, className='enter-medad-btn'),
+                    html.Span("👤", style={'marginRight': '8px'}),
+                    "Continue as Guest"
+                ], id='skip-login-btn', n_clicks=0, className='auth-btn secondary', style={'marginTop': '5px'}),
                 
                 # Footer Labels
                 html.Div(className='login-footer-labels', children=[
@@ -3149,7 +3385,12 @@ app.layout = html.Div([
                 # Hidden disclaimer
                 html.P("", className='login-disclaimer'),
             ])
-        ])
+        ]),
+        
+        # Store for auth state
+        dcc.Store(id='store-user-id', storage_type='session'),
+        dcc.Store(id='store-user-email', storage_type='session'),
+        dcc.Store(id='store-user-name', storage_type='session'),
     ]),
     
     # ==================== MAIN APP (Hidden initially) ====================
@@ -3203,8 +3444,12 @@ app.layout = html.Div([
                 html.Span("Emergency")
             ], className='emergency-btn', id='emergency-btn', n_clicks=0),
             
-            # User Info (populated by JavaScript)
-            html.Div(id='user-info-display', className='user-info', style={'display': 'flex'})
+            # User Info Badge with Logout
+            html.Div(id='user-info-display', className='user-badge', children=[
+                html.Div(id='user-avatar-initial', className='user-badge-avatar', children='👤'),
+                html.Span(id='user-display-name', className='user-badge-name', children='Guest'),
+                html.Span('Logout', id='logout-btn', n_clicks=0, className='logout-link')
+            ])
             
         ], style={
             'display': 'flex', 'alignItems': 'center', 
@@ -3490,6 +3735,340 @@ app.layout = html.Div([
 # 6. CALLBACKS
 # =============================================================================
 
+# =============================================================================
+# AUTHENTICATION CALLBACKS
+# =============================================================================
+
+# Toggle between Login and Register forms
+@app.callback(
+    [Output('login-form-container', 'style'),
+     Output('register-form-container', 'style')],
+    [Input('show-register', 'n_clicks'),
+     Input('show-login', 'n_clicks')],
+    prevent_initial_call=True
+)
+def toggle_auth_forms(show_reg_clicks, show_login_clicks):
+    ctx = callback_context
+    if not ctx.triggered:
+        return dash.no_update, dash.no_update
+    
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if trigger_id == 'show-register':
+        return {'display': 'none'}, {'display': 'block'}
+    else:
+        return {'display': 'block'}, {'display': 'none'}
+
+
+# Login Callback
+@app.callback(
+    [Output('auth-message', 'children'),
+     Output('login-page', 'style'),
+     Output('main-app', 'style'),
+     Output('store-user-id', 'data'),
+     Output('store-user-email', 'data'),
+     Output('store-user-name', 'data'),
+     Output('store-conversation', 'data', allow_duplicate=True),
+     Output('user-display-name', 'children'),
+     Output('user-avatar-initial', 'children')],
+    [Input('login-btn', 'n_clicks'),
+     Input('register-btn', 'n_clicks'),
+     Input('skip-login-btn', 'n_clicks'),
+     Input('logout-btn', 'n_clicks')],
+    [State('login-email', 'value'),
+     State('login-password', 'value'),
+     State('register-name', 'value'),
+     State('register-email', 'value'),
+     State('register-password', 'value'),
+     State('store-user-id', 'data')],
+    prevent_initial_call=True
+)
+def handle_authentication(login_clicks, register_clicks, skip_clicks, logout_clicks,
+                         login_email, login_password,
+                         reg_name, reg_email, reg_password,
+                         current_user_id):
+    ctx = callback_context
+    if not ctx.triggered:
+        return (dash.no_update,) * 9
+    
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Default styles
+    login_page_hidden = {'display': 'none'}
+    main_app_visible = {'display': 'block'}
+    login_page_visible = {'display': 'flex', 'minHeight': '100vh'}
+    main_app_hidden = {'display': 'none'}
+    
+    # Handle Logout
+    if trigger_id == 'logout-btn':
+        return (
+            html.Div("Logged out successfully!", className='auth-success'),
+            login_page_visible,
+            main_app_hidden,
+            None, None, None,
+            [],  # Clear conversation
+            'Guest',
+            '👤'
+        )
+    
+    # Handle Skip Login (Guest Mode)
+    if trigger_id == 'skip-login-btn':
+        return (
+            [],
+            login_page_hidden,
+            main_app_visible,
+            None, None, 'Guest',
+            [],
+            'Guest',
+            '👤'
+        )
+    
+    # Handle Login
+    if trigger_id == 'login-btn':
+        if not login_email or not login_password:
+            return (
+                html.Div("Please enter email and password", className='auth-error'),
+                dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update
+            )
+        
+        # Find user
+        user = User.query.filter_by(email=login_email.lower().strip()).first()
+        
+        if user and user.check_password(login_password):
+            user.update_last_login()
+            
+            # Load user's chat history
+            chat_history = user.get_chat_history(limit=50)
+            
+            # Get user initial for avatar
+            initial = user.name[0].upper() if user.name else user.email[0].upper()
+            display_name = user.name if user.name else user.email.split('@')[0]
+            
+            return (
+                [],
+                login_page_hidden,
+                main_app_visible,
+                user.id,
+                user.email,
+                user.name or display_name,
+                chat_history,
+                display_name,
+                initial
+            )
+        else:
+            return (
+                html.Div("Invalid email or password", className='auth-error'),
+                dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update
+            )
+    
+    # Handle Registration
+    if trigger_id == 'register-btn':
+        if not reg_email or not reg_password:
+            return (
+                html.Div("Please fill in all required fields", className='auth-error'),
+                dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update
+            )
+        
+        if len(reg_password) < 6:
+            return (
+                html.Div("Password must be at least 6 characters", className='auth-error'),
+                dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update
+            )
+        
+        # Check if user already exists
+        existing_user = User.query.filter_by(email=reg_email.lower().strip()).first()
+        if existing_user:
+            return (
+                html.Div("An account with this email already exists", className='auth-error'),
+                dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update
+            )
+        
+        # Create new user
+        try:
+            new_user = User(
+                email=reg_email.lower().strip(),
+                name=reg_name.strip() if reg_name else None
+            )
+            new_user.set_password(reg_password)
+            db.session.add(new_user)
+            db.session.commit()
+            
+            # Get user initial for avatar
+            initial = new_user.name[0].upper() if new_user.name else new_user.email[0].upper()
+            display_name = new_user.name if new_user.name else new_user.email.split('@')[0]
+            
+            return (
+                [],
+                login_page_hidden,
+                main_app_visible,
+                new_user.id,
+                new_user.email,
+                new_user.name or display_name,
+                [],  # New user, no chat history
+                display_name,
+                initial
+            )
+        except Exception as e:
+            print(f"Registration error: {e}")
+            db.session.rollback()
+            return (
+                html.Div("Registration failed. Please try again.", className='auth-error'),
+                dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update,
+                dash.no_update, dash.no_update, dash.no_update
+            )
+    
+    return (dash.no_update,) * 9
+
+
+# Render chat history from stored conversation (on login or page load)
+@app.callback(
+    Output('chat-history', 'children', allow_duplicate=True),
+    Input('store-conversation', 'data'),
+    prevent_initial_call=True
+)
+def render_stored_conversation(conversation):
+    """Render chat bubbles from stored conversation (e.g., after login)"""
+    if not conversation:
+        return []
+    
+    chat_bubbles = []
+    
+    # Welcome message with AI avatar
+    chat_bubbles.append(html.Div([
+        html.Div(className='ai-avatar', style={'marginRight': '18px', 'flexShrink': '0'}),
+        html.Div([
+            html.Div(f"Welcome to {APP_NAME}!", style={
+                'fontWeight': '700', 'fontSize': '1.15rem',
+                'color': '#C4B5FD', 'marginBottom': '8px'
+            }),
+            html.Div("I'm your AI medicine assistant. Tell me your symptoms!", 
+                     style={'lineHeight': '1.7', 'color': '#A78BFA', 'fontSize': '0.95rem'})
+        ])
+    ], className='chat-bubble', style={
+        'display': 'flex', 'alignItems': 'flex-start',
+        'background': 'linear-gradient(135deg, rgba(30,27,75,0.95) 0%, rgba(49,46,129,0.95) 100%)',
+        'padding': '22px 25px',
+        'borderRadius': '12px 28px 28px 28px',
+        'marginBottom': '20px',
+        'border': '1px solid rgba(124,58,237,0.4)'
+    }))
+    
+    for msg in conversation:
+        if msg['role'] == 'user':
+            # User bubble
+            chat_bubbles.append(html.Div([
+                html.Span(msg['content']),
+                html.Span(msg.get('time', ''), style={
+                    'fontSize': '0.75rem', 'opacity': '0.7', 
+                    'marginLeft': '12px'
+                })
+            ], className='chat-bubble', style={
+                'background': 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
+                'color': 'white', 'padding': '16px 24px',
+                'borderRadius': '28px 28px 8px 28px',
+                'marginBottom': '16px', 'maxWidth': '75%', 'marginLeft': 'auto',
+                'boxShadow': '0 5px 20px rgba(124,58,237,0.3)',
+                'fontWeight': '500', 'display': 'flex', 'alignItems': 'center', 'gap': '8px'
+            }))
+        else:
+            is_msg_emergency = msg.get('is_emergency', False)
+            
+            if is_msg_emergency:
+                bubble_bg = 'linear-gradient(135deg, #E53935 0%, #C62828 100%)'
+                bubble_border = '2px solid #B71C1C'
+                text_color = 'white'
+            else:
+                bubble_bg = 'linear-gradient(135deg, rgba(30,27,75,0.98) 0%, rgba(49,46,129,0.98) 100%)'
+                bubble_border = '1px solid rgba(124,58,237,0.4)'
+                text_color = '#C4B5FD'
+            
+            chat_bubbles.append(html.Div([
+                html.Div(className='ai-avatar', style={
+                    'marginRight': '18px', 'flexShrink': '0',
+                    'width': '45px', 'height': '45px'
+                }) if not is_msg_emergency else html.Span("🚨", style={'fontSize': '2.2rem', 'marginRight': '18px'}),
+                html.Span(msg['content'], style={'color': text_color, 'fontWeight': '500'})
+            ], className='chat-bubble', style={
+                'display': 'flex', 'alignItems': 'center',
+                'background': bubble_bg,
+                'padding': '20px 25px',
+                'borderRadius': '12px 28px 28px 28px',
+                'marginBottom': '16px', 'maxWidth': '82%',
+                'border': bubble_border,
+                'boxShadow': '0 5px 20px rgba(124,58,237,0.15)'
+            }))
+            
+            # Medicine table if data exists
+            if msg.get('data'):
+                df = pd.DataFrame(msg['data'])
+                display_cols = ['Medicine Name', 'Primary Use', 'Form', 'Class', 'Type']
+                df_display = df[[c for c in display_cols if c in df.columns]]
+                
+                chat_bubbles.append(html.Div(
+                    dash_table.DataTable(
+                        data=df_display.to_dict('records'),
+                        columns=[{'name': i, 'id': i} for i in df_display.columns],
+                        style_cell={
+                            'textAlign': 'left', 'fontFamily': 'Inter, sans-serif',
+                            'padding': '15px 20px', 'fontSize': '0.92rem',
+                            'border': 'none', 'borderBottom': '1px solid rgba(124,58,237,0.2)',
+                            'backgroundColor': '#1E1B4B', 'color': '#E0E7FF'
+                        },
+                        style_header={
+                            'fontWeight': '700',
+                            'background': 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
+                            'color': 'white', 'border': 'none',
+                            'padding': '18px 20px', 'fontSize': '0.95rem'
+                        },
+                        style_data_conditional=[
+                            {'if': {'row_index': 'odd'}, 'backgroundColor': 'rgba(49,46,129,0.8)'},
+                            {'if': {'row_index': 'even'}, 'backgroundColor': 'rgba(30,27,75,0.9)'}
+                        ],
+                        style_table={'borderRadius': '22px', 'overflow': 'hidden', 'overflowX': 'auto', 'minWidth': '100%'},
+                        style_as_list_view=True
+                    ), className='chat-bubble glass-card', style={
+                        'maxWidth': '100%', 'marginBottom': '22px',
+                        'boxShadow': '0 8px 30px rgba(124,58,237,0.25)', 
+                        'borderRadius': '22px', 'overflowX': 'auto'
+                    }
+                ))
+            
+            # Gemini advice if present
+            gemini_advice = msg.get('gemini_advice')
+            if gemini_advice:
+                chat_bubbles.append(html.Div([
+                    html.Div([
+                        html.Img(src='https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg', 
+                                style={'width': '24px', 'height': '24px', 'marginRight': '10px'}),
+                        html.Span("Google Gemini AI Advice", style={
+                            'fontWeight': '700', 'color': '#A78BFA', 'fontSize': '1rem'
+                        })
+                    ], style={'display': 'flex', 'alignItems': 'center', 'marginBottom': '12px'}),
+                    html.P(gemini_advice, style={
+                        'color': '#E0E7FF', 'lineHeight': '1.7', 'fontSize': '0.95rem',
+                        'margin': '0', 'padding': '0'
+                    })
+                ], style={
+                    'background': 'linear-gradient(135deg, rgba(30,27,75,0.95) 0%, rgba(49,46,129,0.95) 100%)',
+                    'borderRadius': '16px', 'padding': '20px',
+                    'marginBottom': '20px', 'border': '1px solid rgba(124,58,237,0.4)',
+                    'boxShadow': '0 4px 15px rgba(124,58,237,0.2)'
+                }))
+    
+    return chat_bubbles
+
+
 # Auto-scroll with smooth animation
 app.clientside_callback(
     """
@@ -3612,13 +4191,14 @@ app.clientside_callback(
         'sleep', 'allergy', 'diabetes', 'bp', 'acidity', 'skin', 'vitamin', 'anxiety'
     ]],
     [State('user-input', 'value'),
-     State('store-conversation', 'data')],
+     State('store-conversation', 'data'),
+     State('store-user-id', 'data')],
     prevent_initial_call=True
 )
 def update_chat(n_clicks, n_submit, voice_text, *args):
     # Get button clicks and states
-    btn_clicks = args[:-2]
-    user_text, conversation = args[-2], args[-1]
+    btn_clicks = args[:-3]
+    user_text, conversation, user_id = args[-3], args[-2], args[-1]
     
     # Initialize analytics content (for the side panel)
     analytics_content = dash.no_update
@@ -3676,7 +4256,16 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
                          "unconscious", "severe bleeding", "poisoning", "overdose", "suicide"]
     is_emergency = any(k in final_text.lower() for k in emergency_keywords)
 
-    conversation.append({'role': 'user', 'content': display_text, 'time': datetime.now().strftime("%H:%M")})
+    # Add user message to conversation
+    user_msg = {'role': 'user', 'content': display_text, 'time': datetime.now().strftime("%H:%M")}
+    conversation.append(user_msg)
+    
+    # Save user message to database if logged in
+    if user_id:
+        try:
+            save_message(user_id, 'user', display_text)
+        except Exception as e:
+            print(f"Error saving user message: {e}")
     
     page_style = {
         'minHeight': '100vh',
@@ -3688,10 +4277,23 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
     if is_emergency:
         response_text = "🚨 EMERGENCY! Call ambulance immediately: 102 / 108 / 911. Do NOT wait for online advice!"
         page_style['background'] = 'linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)'
-        conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': True, 'gemini_advice': None})
+        ai_msg = {'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': True, 'gemini_advice': None}
+        conversation.append(ai_msg)
+        # Save AI response to database
+        if user_id:
+            try:
+                save_message(user_id, 'ai', response_text, None, True, None)
+            except Exception as e:
+                print(f"Error saving AI message: {e}")
     elif not DATA_LOADED:
         response_text = "❌ System Error: Database unavailable. Please try again later."
-        conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
+        ai_msg = {'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None}
+        conversation.append(ai_msg)
+        if user_id:
+            try:
+                save_message(user_id, 'ai', response_text, None, False, None)
+            except Exception as e:
+                print(f"Error saving AI message: {e}")
     else:
         recs, error_msg = get_ai_recommendation(final_text)
         
@@ -3702,13 +4304,32 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
         
         if error_msg:
             response_text = f"🤖 {error_msg}"
-            conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
+            ai_msg = {'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None}
+            conversation.append(ai_msg)
+            if user_id:
+                try:
+                    save_message(user_id, 'ai', response_text, None, False, None)
+                except Exception as e:
+                    print(f"Error saving AI message: {e}")
         elif recs:
             response_text = f"✅ Found {len(recs)} medicines matching your symptoms:"
-            conversation.append({'role': 'ai', 'content': response_text, 'data': recs, 'is_emergency': False, 'gemini_advice': gemini_advice})
+            ai_msg = {'role': 'ai', 'content': response_text, 'data': recs, 'is_emergency': False, 'gemini_advice': gemini_advice}
+            conversation.append(ai_msg)
+            # Save AI response with medicine data
+            if user_id:
+                try:
+                    save_message(user_id, 'ai', response_text, recs, False, gemini_advice)
+                except Exception as e:
+                    print(f"Error saving AI message: {e}")
         else:
             response_text = "😔 No exact matches found. Try different keywords or describe symptoms in more detail."
-            conversation.append({'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None})
+            ai_msg = {'role': 'ai', 'content': response_text, 'data': None, 'is_emergency': False, 'gemini_advice': None}
+            conversation.append(ai_msg)
+            if user_id:
+                try:
+                    save_message(user_id, 'ai', response_text, None, False, None)
+                except Exception as e:
+                    print(f"Error saving AI message: {e}")
 
     # Render Chat Bubbles
     chat_bubbles = []
@@ -3804,12 +4425,12 @@ def update_chat(n_clicks, n_submit, voice_text, *args):
                             {'if': {'row_index': 'odd'}, 'backgroundColor': 'rgba(49,46,129,0.8)'},
                             {'if': {'row_index': 'even'}, 'backgroundColor': 'rgba(30,27,75,0.9)'}
                         ],
-                        style_table={'borderRadius': '22px', 'overflow': 'hidden'},
+                        style_table={'borderRadius': '22px', 'overflow': 'hidden', 'overflowX': 'auto', 'minWidth': '100%'},
                         style_as_list_view=True
                     ), className='chat-bubble glass-card', style={
                         'maxWidth': '100%', 'marginBottom': '22px',
                         'boxShadow': '0 8px 30px rgba(124,58,237,0.25)', 
-                        'borderRadius': '22px', 'overflow': 'hidden'
+                        'borderRadius': '22px', 'overflowX': 'auto'
                     }
                 ))
                 
