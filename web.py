@@ -24,13 +24,16 @@ load_dotenv()
 # =============================================================================
 from models import db, User, init_db, save_message, get_or_create_session
 
-try:
-    from sentence_transformers import SentenceTransformer
-    SEMANTIC_AVAILABLE = True
-    print("✅ Sentence Transformers loaded successfully")
-except ImportError:
-    SEMANTIC_AVAILABLE = False
-    print("⚠️ Sentence Transformers not available, using TF-IDF only")
+# Sentence Transformers disabled
+# try:
+#     from sentence_transformers import SentenceTransformer
+#     SEMANTIC_AVAILABLE = True
+#     print("✅ Sentence Transformers loaded successfully")
+# except ImportError:
+#     SEMANTIC_AVAILABLE = False
+#     print("⚠️ Sentence Transformers not available, using TF-IDF only")
+SEMANTIC_AVAILABLE = False
+print("⚠️ Sentence Transformers disabled, using TF-IDF only")
 
 # =============================================================================
 # MEDAD 2.0 INTEGRATION - Multimodal AI Upgrade
